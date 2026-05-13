@@ -149,7 +149,7 @@ struct Item {
 struct Node {
   CPoint mPos;
   char* txt;
-  UINT color;
+  UINT level;
 };
 
 struct InnerHTMLInfo {
@@ -216,6 +216,13 @@ int indexOfNode(CPoint Pos, struct Node* nodes, int len) {
   return -1;
 }
 
+UINT txtLevel(CPoint* posArr, int len, MoveNode** moveList) {
+  for (int i = 0; i < len; i++) {
+    if (posArr[i] != IdxToPoint(moveList[i]->mIdx)) return i;
+  }
+  return 0xFFFF;
+}
+
 EM_PORT_API(void) getBranchNodes(CPoint* posArr, int len) {
   bool done = false;
   int* count = (int*)out_buffer;
@@ -237,7 +244,6 @@ EM_PORT_API(void) getBranchNodes(CPoint* posArr, int len) {
       int idx = indexOf(IdxToPoint(pMove->mIdx), posArr, len);
       moveList[listLength++] = pMove;
 
-      //if(listLength <= len + 1){
       if(pMove->mRight) {
         stack[stackLength].pMove = pMove->mRight;
         stack[stackLength++].nMove = listLength;
@@ -259,42 +265,40 @@ EM_PORT_API(void) getBranchNodes(CPoint* posArr, int len) {
       else if(listLength == len + 1) {
         if(idx >= 0) {
           int idxNode = indexOfNode(IdxToPoint(jointNode.pMove->mIdx), Nodes, *count);
+          UINT level = txtLevel(posArr, len, moveList);
           if(idxNode > -1) {
-            if(Nodes[idxNode].txt == 0) {
+            if(Nodes[idxNode].level < level) {
               Nodes[idxNode].txt = pMove->getBoardText();
-              Nodes[idxNode].color = 0;
+              Nodes[idxNode].level = level;
             }
           }
           else {
             pNode->mPos = IdxToPoint(jointNode.pMove->mIdx);
             pNode->txt = pMove->getBoardText();
-            pNode->color = 0;
+            pNode->level = level;
             pNode++;
             (*count)++;
           }
         }
         else if(idx == -1 && jointNode.pMove == 0) {
           int idxNode = indexOfNode(IdxToPoint(pMove->mIdx), Nodes, *count);
+          UINT level = txtLevel(posArr, len, moveList);
           if(idxNode > -1) {
-            if(Nodes[idxNode].txt == 0) {
+            if(Nodes[idxNode].level < level) {
               Nodes[idxNode].txt = pMove->getBoardText();
-              Nodes[idxNode].color = 0;
+              Nodes[idxNode].level = level;
             }
           }
           else {
             pNode->mPos = IdxToPoint(pMove->mIdx);
             pNode->txt = pMove->getBoardText();
-            pNode->color = 0;
+            pNode->level = level;
             pNode++;
             (*count)++;
           }
         }
         pMove = 0;
       }
-      //}
-      //else{
-      //pMove = 0;
-      //}
     }
     else if(stackLength > 0) {
       pMove = stack[--stackLength].pMove;
